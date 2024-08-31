@@ -7,6 +7,7 @@ import torch
 import sacrebleu
 from rouge_score import rouge_scorer, scoring
 
+ROUGE_SCORER = None
 
 def bleu(refs, preds):
     """
@@ -34,7 +35,12 @@ def rouge(refs, preds):
         A `list` of predicted `strs`.
     """
     rouge_types = ["rouge1", "rouge2", "rougeLsum"]
-    scorer = rouge_scorer.RougeScorer(rouge_types)
+    
+    global ROUGE_SCORER
+    if ROUGE_SCORER is None:
+        # init RougeScorer once (https://github.com/EleutherAI/lm-evaluation-harness/issues/1692)--rouge_types are constant
+        ROUGE_SCORER = rouge_scorer.RougeScorer(rouge_types)
+    scorer = ROUGE_SCORER
     # Add newlines between sentences to correctly compute `rougeLsum`.
 
     def _prepare_summary(summary):
@@ -135,7 +141,6 @@ class XSumv2(ConfigurableTask):
 
     def process_results(self, doc, results):
         completion = results[0]
-
         # breakpoint()
 
         document = doc["document"]
@@ -143,7 +148,6 @@ class XSumv2(ConfigurableTask):
 
         true_refs = [doc["summary"]]
         all_refs = true_refs
-
         # ROUGE-N
         rouge_scores = [rouge([ref], [completion]) for ref in all_refs]
         # ROUGE-1
